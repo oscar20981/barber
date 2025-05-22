@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Agendamiento de Citas - Barbería</title>
+    <style>
+        #calendario {
+            display: grid;
+            grid-template-columns: repeat(7, 40px);
+            gap: 5px;
+            margin-top: 30px;
+        }
+        .dia {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            background: #f9f9f9;
+        }
+        .con-cita {
+            background: #b2f7b8;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Agenda tu cita</h1>
+    <form id="formCita">
+        <label>Nombre:<br>
+            <input type="text" id="nombre" required>
+        </label><br><br>
+        <label>Teléfono:<br>
+            <input type="tel" id="telefono" required pattern="[0-9]{10,}">
+        </label><br><br>
+        <label>Fecha de la cita:<br>
+            <input type="date" id="fecha" required>
+        </label><br><br>
+        <button type="submit">Agendar cita</button>
+    </form>
+    <h2>Citas agendadas</h2>
+    <ul id="listaCitas"></ul>
+
+    <h2>Calendario de citas (mes actual)</h2>
+    <div id="calendario"></div>
+    <div id="detalleCita"></div>
+
+    <script>
+    let citas = JSON.parse(localStorage.getItem('citasBarberia') || '[]');
+
+    function guardarCitas() {
+        localStorage.setItem('citasBarberia', JSON.stringify(citas));
+    }
+
+    function mostrarCitas() {
+        const lista = document.getElementById('listaCitas');
+        lista.innerHTML = '';
+        citas.forEach(cita => {
+            const item = document.createElement('li');
+            item.textContent = `Nombre: ${cita.nombre} | Teléfono: ${cita.telefono} | Fecha: ${cita.fecha}`;
+            lista.appendChild(item);
+        });
+    }
+
+    function renderizarCalendario() {
+        const calendario = document.getElementById('calendario');
+        calendario.innerHTML = '';
+        const detalle = document.getElementById('detalleCita');
+        detalle.innerHTML = '';
+
+        const hoy = new Date();
+        const year = hoy.getFullYear();
+        const month = hoy.getMonth();
+        const primerDia = new Date(year, month, 1).getDay();
+        const diasEnMes = new Date(year, month + 1, 0).getDate();
+
+        // Días de la semana
+        const diasSemana = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+        diasSemana.forEach(dia => {
+            const d = document.createElement('div');
+            d.textContent = dia;
+            d.style.fontWeight = 'bold';
+            calendario.appendChild(d);
+        });
+
+        // Espacios vacíos antes del primer día
+        for (let i = 0; i < primerDia; i++) {
+            const vacio = document.createElement('div');
+            calendario.appendChild(vacio);
+        }
+
+        // Días del mes
+        for (let dia = 1; dia <= diasEnMes; dia++) {
+            const fechaStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            const divDia = document.createElement('div');
+            divDia.className = 'dia';
+            divDia.textContent = dia;
+
+            // Si hay cita en este día
+            const citasDia = citas.filter(c => c.fecha === fechaStr);
+            if (citasDia.length > 0) {
+                divDia.classList.add('con-cita');
+                divDia.title = 'Hay cita(s) este día';
+            }
+
+            divDia.onclick = () => {
+                if (citasDia.length > 0) {
+                    detalle.innerHTML = `<b>Citas para el ${fechaStr}:</b><br>` +
+                        citasDia.map(c => `Nombre: ${c.nombre} | Tel: ${c.telefono}`).join('<br>');
+                } else {
+                    detalle.innerHTML = `<b>No hay citas para el ${fechaStr}</b>`;
+                }
+            };
+
+            calendario.appendChild(divDia);
+        }
+    }
+
+    document.getElementById('formCita').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const nombre = document.getElementById('nombre').value.trim();
+        const telefono = document.getElementById('telefono').value.trim();
+        const fecha = document.getElementById('fecha').value;
+
+        if (!nombre || !telefono || !fecha) {
+            alert('Por favor, completa todos los campos.');
+            return;
+        }
+
+        citas.push({ nombre, telefono, fecha });
+        guardarCitas();
+        mostrarCitas();
+        renderizarCalendario();
+        document.getElementById('formCita').reset();
+    });
+
+    // Inicializar
+    mostrarCitas();
+    renderizarCalendario();
+    </script>
+</body>
+</html>
