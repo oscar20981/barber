@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Agendamiento de Citas - Barbería</title>
+    <style>
+    body {
+    background: url( '' ) ;
+    width: 800px;
+    height: 500px;
+}
+        #calendario {
+            display: grid;
+            grid-template-columns: repeat(7, 40px);
+            gap: 5px;
+            margin-top: 30px;
+        }
+        .dia {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            background: #f9f9f9;
+        }
+        .con-cita {
+            background: #b2f7b8;
+            font-weight: bold;
+        }
+        .eliminar-btn {
+            margin-left: 10px;
+            color: #fff;
+            background: #e74c3c;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            padding: 2px 8px;
+        }
+        .seleccionado {
+            border: 2px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>Agenda tu cita</h1>
+    <form id="formCita">
+        <label>Nombre:<br>
+            <input type="text" id="nombre" required>
+        </label><br><br>
+        <label>Teléfono:<br>
+            <input type="tel" id="telefono" required pattern="[0-9]{10,}">
+        </label><br><br>
+        <label>Fecha de la cita:<br>
+            <input type="date" id="fecha" required>
+        </label><br><br>
+        <label>Hora de la cita:<br>
+            <select id="hora" required>
+                <option value="">Selecciona una hora</option>
+                <option value="7:00 am">7:00 am</option>
+                <option value="8:00 am">8:00 am</option>
+                <option value="9:00 am">9:00 am</option>
+            </select>
+        </label><br><br>
+        <button type="submit">Agendar cita</button>
+    </form>
+    <h2>Citas agendadas</h2>
+    <ul id="listaCitas"></ul>
+
+    <h2>Calendario de citas (mes actual)</h2>
+    <div id="calendario"></div>
+    <div id="detalleCita"></div>
+
+    <script>
+    let citas = JSON.parse(localStorage.getItem('citasBarberia') || '[]');
+
+    // Por defecto, mostrar las citas de hoy
+    const hoy = new Date();
+    let fechaSeleccionada = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+    function guardarCitas() {
+        localStorage.setItem('citasBarberia', JSON.stringify(citas));
+    }
+
+    function mostrarCitas(fecha) {
+        const lista = document.getElementById('listaCitas');
+        lista.innerHTML = '';
+        const citasDia = citas.filter(c => c.fecha === fecha);
+        if (citasDia.length === 0) {
+            const item = document.createElement('li');
+            item.textContent = 'No hay citas para este día.';
+            lista.appendChild(item);
+        } else {
+            citasDia.forEach((cita, idx) => {
+                const item = document.createElement('li');
+                item.textContent = `Nombre: ${cita.nombre} | Teléfono: ${cita.telefono} | Fecha: ${cita.fecha} | Hora: ${cita.hora}`;
+                // Botón eliminar
+                const btn = document.createElement('button');
+                btn.textContent = 'Eliminar';
+                btn.className = 'eliminar-btn';
+                btn.onclick = function() {
+                    if (confirm('¿Seguro que deseas eliminar esta cita?')) {
+                        // Buscar el índice real en el array de citas
+                        const realIdx = citas.findIndex(c => c.nombre === cita.nombre && c.telefono === cita.telefono && c.fecha === cita.fecha && c.hora === cita.hora);
+                        if (realIdx !== -1) {
+                            citas.splice(realIdx, 1);
+                            guardarCitas();
+                            mostrarCitas(fechaSeleccionada);
+                            renderizarCalendario();
+                        }
+                    }
+                };
+                item.appendChild(btn);
+                lista.appendChild(item);
+            });
+        }
+    }
+
+    function renderizarCalendario() {
+        const calendario = document.getElementById('calendario');
+        calendario.innerHTML = '';
+        const detalle = document.getElementById('detalleCita');
+        detalle.innerHTML = '';
+
+        const hoy = new Date();
+        const year = hoy.getFullYear();
+        const month = hoy.getMonth();
+        const primerDia = new Date(year, month, 1).getDay();
+        const diasEnMes = new Date(year, month + 1, 0).getDate();
+
+        // Días de la semana
+        const diasSemana = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+        diasSemana.forEach(dia => {
+            const d = document.createElement('div');
+            d.textContent = dia;
+            d.style.fontWeight = 'bold';
+            calendario.appendChild(d);
+        });
+
+        // Espacios vacíos antes del primer día
+        for (let i = 0; i < primerDia; i++) {
+            const vacio = document.createElement('div');
+            calendario.appendChild(vacio);
+        }
+
+        // Días del mes
+        for (let dia = 1; dia <= diasEnMes; dia++) {
+            const fechaStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            const divDia = document.createElement('div');
+            divDia.className = 'dia';
+            divDia.textContent = dia;
+
+            // Si hay cita en este día
+            const citasDia = citas.filter(c => c.fecha === fechaStr);
+            if (citasDia.length > 0) {
+                divDia.classList.add('con-cita');
+                divDia.title = 'Hay cita(s) este día';
+            }
+
+            // Resalta el día seleccionado
+            if (fechaStr === fechaSeleccionada) {
+                divDia.classList.add('seleccionado');
+            }
+
+            divDia.onclick = () => {
+                fechaSeleccionada = fechaStr;
+                mostrarCitas(fechaSeleccionada);
+                renderizarCalendario();
+            };
+
+            calendario.appendChild(divDia);
+        }
+    }
+
+    document.getElementById('formCita').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const nombre = document.getElementById('nombre').value.trim();
+        const telefono = document.getElementById('telefono').value.trim();
+        const fecha = document.getElementById('fecha').value;
+        const hora = document.getElementById('hora').value;
+
+        if (!nombre || !telefono || !fecha || !hora) {
+            alert('Por favor, completa todos los campos.');
+            return;
+        }
+
+        citas.push({ nombre, telefono, fecha, hora });
+        guardarCitas();
+        fechaSeleccionada = fecha; // Mostrar la cita recién agendada
+        mostrarCitas(fechaSeleccionada);
+        renderizarCalendario();
+        document.getElementById('formCita').reset();
+    });
+
+    // Inicializar
+    mostrarCitas(fechaSeleccionada);
+    renderizarCalendario();
+    </script>
+</body>
+</html>
